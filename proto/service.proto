@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package rpc;
+
+// 定义聊天邀请的请求和响应
+message ChatInviteRequest {
+  string inviter_ip = 1; // 邀请者的 IP 地址
+}
+
+message ChatInviteResponse {
+  bool accepted = 1; // 是否接受邀请
+  string name = 2;   // 接受邀请用户的名称
+}
+
+// 定义发送聊天成员信息的请求和响应
+message ChatMemberInfoRequest {
+  map<string, string> members = 1; // 聊天成员的 IP 地址列表
+  string timestamp = 2;  // 聊天创建的时间戳
+}
+
+message ChatMemberInfoResponse {
+  bool confirmed = 1; // 成员的确认信息
+}
+
+// 定义发送聊天消息的请求和响应
+message ChatMessageRequest {
+  string sender_ip = 1; // 发送者的 IP 地址
+  string message = 2; // 聊天内容
+  repeated uint64 vclock = 3;
+}
+
+message ChatMessageResponse {
+  bool success = 1; // 消息是否成功发送
+}
+
+// 定义聊天服务
+service QuickChatService {
+  // 发送聊天邀请
+  rpc SendChatInvite(ChatInviteRequest) returns (ChatInviteResponse);
+  // 发送聊天成员信息
+  rpc SendChatMemberInfo(ChatMemberInfoRequest) returns (ChatMemberInfoResponse);
+  // 发送聊天消息
+  rpc SendChatMessage(ChatMessageRequest) returns (ChatMessageResponse);
+}
