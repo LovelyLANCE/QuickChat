@@ -39,7 +39,6 @@ class QuickChatServerThread(QThread):
         self.server.add_insecure_port(f'0.0.0.0:{self.port}')
         self.server.start()
         print(f"Server started on port {self.port}")
-        print(f"Host ip: (Tailscale){self.ip}")
         self.server.wait_for_termination()
 
     def stop(self):
