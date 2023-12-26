@@ -30,6 +30,16 @@ class QuickChatServiceStub(object):
                 request_serializer=service__pb2.ChatMessageRequest.SerializeToString,
                 response_deserializer=service__pb2.ChatMessageResponse.FromString,
                 )
+        self.SendChatQuit = channel.unary_unary(
+                '/rpc.QuickChatService/SendChatQuit',
+                request_serializer=service__pb2.ChatQuitRequest.SerializeToString,
+                response_deserializer=service__pb2.ChatQuitResponse.FromString,
+                )
+        self.SendChatDetect = channel.unary_unary(
+                '/rpc.QuickChatService/SendChatDetect',
+                request_serializer=service__pb2.ChatDetectRequest.SerializeToString,
+                response_deserializer=service__pb2.ChatDetectResponse.FromString,
+                )
 
 
 class QuickChatServiceServicer(object):
@@ -57,6 +67,20 @@ class QuickChatServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendChatQuit(self, request, context):
+        """退出聊天请求
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SendChatDetect(self, request, context):
+        """探测在线状况请求
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_QuickChatServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -74,6 +98,16 @@ def add_QuickChatServiceServicer_to_server(servicer, server):
                     servicer.SendChatMessage,
                     request_deserializer=service__pb2.ChatMessageRequest.FromString,
                     response_serializer=service__pb2.ChatMessageResponse.SerializeToString,
+            ),
+            'SendChatQuit': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendChatQuit,
+                    request_deserializer=service__pb2.ChatQuitRequest.FromString,
+                    response_serializer=service__pb2.ChatQuitResponse.SerializeToString,
+            ),
+            'SendChatDetect': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendChatDetect,
+                    request_deserializer=service__pb2.ChatDetectRequest.FromString,
+                    response_serializer=service__pb2.ChatDetectResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -134,5 +168,39 @@ class QuickChatService(object):
         return grpc.experimental.unary_unary(request, target, '/rpc.QuickChatService/SendChatMessage',
             service__pb2.ChatMessageRequest.SerializeToString,
             service__pb2.ChatMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendChatQuit(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/rpc.QuickChatService/SendChatQuit',
+            service__pb2.ChatQuitRequest.SerializeToString,
+            service__pb2.ChatQuitResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendChatDetect(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/rpc.QuickChatService/SendChatDetect',
+            service__pb2.ChatDetectRequest.SerializeToString,
+            service__pb2.ChatDetectResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

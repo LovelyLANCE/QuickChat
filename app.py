@@ -4,9 +4,10 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from PySide6.QtWidgets import QApplication, QWidget, QMessageBox
 from PySide6.QtCore import QThread, QTimer, Signal, Slot
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QFont, Qt
 
 from QuickChatUI import Ui_QuickChat
+from QuickChatSetupUI import Ui_QuickChatSetup
 from QuickChatServer import QuickChatServer
 import service_pb2
 import service_pb2_grpc
@@ -23,12 +24,13 @@ class QuickChatServerThread(QThread):
     chatInvitedSignal = Signal(str)
     chatJoinSignal = Signal(dict, str)
     messageReceiveSignal = Signal(str, str, list)
+    memberQuitSignal = Signal(str)
 
-    def __init__(self, port, name, parent=None):
+    def __init__(self, ip, port, name, parent=None):
         super(QuickChatServerThread, self).__init__(parent)
         self.port = port
         self.server = None
-        self.ip = get_ip_addresses().get('Tailscale')
+        self.ip = ip
         self.name = name
 
     def run(self):
@@ -53,19 +55,21 @@ class QuickChat(QWidget, Ui_QuickChat):
     """ 信号 """
     chatCreatedSignal = Signal(str)
 
-    def __init__(self, name, port):
+    def __init__(self, name, ip, port):
         super().__init__()
         self.setupUi(self)
-        self.setWindowTitle(f"QuickChat - {name}")
-        self.setWindowIcon(QIcon('resource/icon.ico'))
+        self.setWindowTitle(f"QuickChat - {name}({ip}:{port})")
+        self.setWindowIcon(QIcon("resource/icon.ico"))
+        self.stackedWidget.setCurrentIndex(0)
 
-        self.serverThread = QuickChatServerThread(port=port, name=name)
+        self.serverThread = QuickChatServerThread(port=port, name=name, ip=ip)
         self.serverThread.start()
 
-        self.ip = get_ip_addresses().get('Tailscale')
+        self.ip = ip
         self.port = port
         self.name = name
         self.members = {}
+        self.status = {}
         self.stubs = {}
         self.inviter = None
         self.local_idx = None
@@ -74,17 +78,23 @@ class QuickChat(QWidget, Ui_QuickChat):
         self.db = SQLiteDatabase('data/chat.db')
         self.chat_id = None
 
-        self.timer = QTimer(self)
-        self.timer.setInterval(0)
+        self.message_timer = QTimer(self)
+        self.message_timer.setInterval(0)
+        self.detect_timer = QTimer(self)
+        self.detect_timer.setInterval(3000)
 
         """ 信号函数绑定"""
         self.sendButton.clicked.connect(self.send_message)
         self.inviteButton.clicked.connect(self.invite)
+        self.loadButton.clicked.connect(self.load_chat_history)
+        self.quitButton.clicked.connect(self.quit)
         self.chatCreatedSignal.connect(self.chat_created)
         self.serverThread.chatJoinSignal.connect(self.chat_join)
         self.serverThread.chatInvitedSignal.connect(self.chat_invited)
         self.serverThread.messageReceiveSignal.connect(self.receive_message)
-        self.timer.timeout.connect(self.check_message_queue)
+        self.serverThread.memberQuitSignal.connect(self.member_quit)
+        self.message_timer.timeout.connect(self.check_message_queue)
+        self.detect_timer.timeout.connect(self.detect_members_status)
 
     """ 槽与事件 """
 
@@ -107,6 +117,7 @@ class QuickChat(QWidget, Ui_QuickChat):
             if response.accepted:
                 self.members[response.name] = address
                 self.stubs[response.name] = stub
+                self.status[response.name] = True
 
         current_time = datetime.now()
         timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -128,9 +139,8 @@ class QuickChat(QWidget, Ui_QuickChat):
         self.inviteBox.clear()
         for name in sorted(self.members):
             self.memberBox.append(f"{name}({self.members[name]})")
-        self.inviteBox.hide()
-        self.inviteButton.hide()
-        self.label_2.hide()
+
+        self.stackedWidget.setCurrentIndex(1)
 
         """ 初始化向量时钟 """
         for i, name in enumerate(sorted(self.members)):
@@ -138,7 +148,8 @@ class QuickChat(QWidget, Ui_QuickChat):
                 self.local_idx = i
                 break
         self.vclock = VectorClock(self.local_idx, self.members)
-        self.timer.start()
+        self.message_timer.start()
+        self.detect_timer.start()
 
         """ 在数据库中初始化本次聊天信息 """
         identifier = get_chat_id(self.members)
@@ -168,13 +179,13 @@ class QuickChat(QWidget, Ui_QuickChat):
             channel = grpc.insecure_channel(address)
             stub = service_pb2_grpc.QuickChatServiceStub(channel)
             self.stubs[name] = stub
+            self.status[name] = True
 
         self.inviteBox.clear()
         for name in sorted(members):
             self.memberBox.append(f"{name}({members[name]})")
-        self.inviteBox.hide()
-        self.inviteButton.hide()
-        self.label_2.hide()
+
+        self.stackedWidget.setCurrentIndex(1)
 
         """ 初始化向量时钟 """
         for i, name in enumerate(sorted(self.members)):
@@ -182,7 +193,8 @@ class QuickChat(QWidget, Ui_QuickChat):
                 self.local_idx = i
                 break
         self.vclock = VectorClock(self.local_idx, self.members)
-        self.timer.start()
+        self.message_timer.start()
+        self.detect_timer.start()
 
         """ 在数据库中初始化本次聊天信息 """
         identifier = get_chat_id(self.members)
@@ -199,9 +211,16 @@ class QuickChat(QWidget, Ui_QuickChat):
         message = self.editBox.toPlainText()
         message_vector = self.vclock.local_event()
         for name in self.stubs.keys():
+            if not self.status[name]:
+                continue
             request = service_pb2.ChatMessageRequest(sender_ip=f'{self.ip}:{self.port}',
                                                      message=message, vclock=message_vector)
-            self.stubs[name].SendChatMessage(request)
+            try:
+                # 加入超时检测避免阻塞
+                response = self.stubs[name].SendChatMessage(request, timeout=1)
+            except grpc.RpcError as e:
+                pass
+
         msg = Message(self.local_idx, message, message_vector)
         self.message_queue.append(msg)
         print(msg.message)
@@ -240,6 +259,76 @@ class QuickChat(QWidget, Ui_QuickChat):
                     print(self.vclock.vector)
                     del self.message_queue[i]
 
+    @Slot()
+    def load_chat_history(self):
+        """
+        加载历史聊天记录
+        :return:
+        """
+        identifier = get_chat_id(self.members)
+        history_chats = self.db.load_chat_history(identifier)
+        self.messageBox.append("")
+        self.messageBox.append(f"<span style='color: gray;'>--------------------历史聊天记录--------------------</span>")
+        for chat in history_chats:
+            self.messageBox.append(f"<span style='color: gray;'>-----{chat['time']}-----</span>")
+            chat = sorted(chat['content'], key=lambda x: x[0])
+            for message in chat:
+                self.messageBox.append(f"<span style='color: gray;'>{message[1]}({message[2]}) : {message[3]}</span>")
+            self.messageBox.append("")
+
+    @Slot(str)
+    def member_quit(self, sender_ip):
+        """
+        接受并处理其他成员的退出聊天请求
+        :return:
+        """
+        for name in self.stubs.keys():
+            if self.members[name] == sender_ip:
+                self.status[name] = False
+                text = f"系统消息 : {name}({sender_ip})已退出聊天"
+                message = f"<span style='color: red;'>{text}</span>"
+                self.messageBox.append(message)
+                break
+
+    @Slot()
+    def detect_members_status(self):
+        """
+        定期检查其他成员的在线情况
+        :return:
+        """
+        for name in self.stubs.keys():
+            if self.status[name]:
+                print(self.status)
+                request = service_pb2.ChatDetectRequest(detect=True)
+                try:
+                    # 超时检测
+                    self.stubs[name].SendChatDetect(request, timeout=3)
+                except grpc.RpcError as e:
+                    self.status[name] = False
+                    for n in self.stubs.keys():
+                        if self.status[n]:
+                            try:
+                                request = service_pb2.ChatQuitRequest(sender_ip=self.members[name])
+                                self.stubs[n].SendChatQuit(request, timeout=3)
+                            except grpc.RpcError as e:
+                                print(e)
+
+    @Slot()
+    def quit(self):
+        """
+        退出聊天
+        :return:
+        """
+        for name in self.stubs.keys():
+            if self.status[name]:
+                request = service_pb2.ChatQuitRequest(sender_ip=f'{self.ip}:{self.port}')
+                try:
+                    # 超时检测
+                    self.stubs[name].SendChatQuit(request, timeout=1)
+                except grpc.RpcError as e:
+                    pass
+        self.close()
+
     def closeEvent(self, event):
         """
         关闭程序
@@ -252,20 +341,51 @@ class QuickChat(QWidget, Ui_QuickChat):
         super().closeEvent(event)
 
 
+class QuickChatSetup(QWidget, Ui_QuickChatSetup):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.setWindowIcon(QIcon("resource/icon.ico"))
+        self.chatWindow = None
+
+        self.ip_addresses = get_ip_addresses()
+        adapters = self.ip_addresses.keys()
+        for adapter in adapters:
+            self.adapterBox.addItem(adapter)
+        font = QFont()
+        font.setPointSize(9)
+        for index in range(self.adapterBox.count()):
+            self.adapterBox.setItemData(index, font, Qt.FontRole)
+        self.adapterBox.setFont(font)
+        self.nameBox.setFont(font)
+        self.portBox.setFont(font)
+
+        self.setupButton.clicked.connect(self.setup)
+
+    @Slot()
+    def setup(self):
+        """
+        根据选择的适配器何端口启动QuickChat
+        :return:
+        """
+        name = self.nameBox.text()
+        adapter = self.adapterBox.currentText()
+        port = self.portBox.text()
+        ip = self.ip_addresses[adapter]
+        self.close()
+        self.chatWindow = QuickChat(name, ip, port)
+        self.chatWindow.show()
+
+
 def main():
     """
     程序入口
     :return:
     """
-    app = QApplication(sys.argv)
-    if len(sys.argv) > 2:
-        name = str(sys.argv[1])
-        port = int(sys.argv[2])
-        app_ui = QuickChat(name, port)
-        app_ui.show()
-        sys.exit(app.exec())
-    else:
-        print("Missing argument")
+    app = QApplication()
+    setup = QuickChatSetup()
+    setup.show()
+    app.exec()
 
 
 if __name__ == '__main__':

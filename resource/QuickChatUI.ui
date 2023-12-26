@@ -63,6 +63,12 @@
      <bold>true</bold>
     </font>
    </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color: rgb(81, 185, 65);
+	color: white;
+}</string>
+   </property>
    <property name="text">
     <string>发送</string>
    </property>
@@ -85,7 +91,7 @@
     <rect>
      <x>890</x>
      <y>30</y>
-     <width>101</width>
+     <width>81</width>
      <height>31</height>
     </rect>
    </property>
@@ -95,57 +101,136 @@
      <bold>true</bold>
     </font>
    </property>
+   <property name="layoutDirection">
+    <enum>Qt::LeftToRight</enum>
+   </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>在线成员</string>
    </property>
   </widget>
-  <widget class="QTextEdit" name="inviteBox">
+  <widget class="QStackedWidget" name="stackedWidget">
    <property name="geometry">
     <rect>
      <x>800</x>
-     <y>410</y>
+     <y>360</y>
      <width>261</width>
-     <height>261</height>
+     <height>361</height>
     </rect>
    </property>
-  </widget>
-  <widget class="QPushButton" name="inviteButton">
-   <property name="geometry">
-    <rect>
-     <x>890</x>
-     <y>680</y>
-     <width>75</width>
-     <height>31</height>
-    </rect>
+   <property name="currentIndex">
+    <number>1</number>
    </property>
-   <property name="font">
-    <font>
-     <pointsize>12</pointsize>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="text">
-    <string>邀请</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_2">
-   <property name="geometry">
-    <rect>
-     <x>820</x>
-     <y>370</y>
-     <width>261</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>12</pointsize>
-     <bold>false</bold>
-    </font>
-   </property>
-   <property name="text">
-    <string>在下方输入邀请至聊天室的成员</string>
-   </property>
+   <widget class="QWidget" name="invitePage">
+    <widget class="QLabel" name="label_2">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>10</y>
+       <width>231</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>在下方输入邀请至聊天室的成员</string>
+     </property>
+    </widget>
+    <widget class="QTextEdit" name="inviteBox">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>50</y>
+       <width>261</width>
+       <height>261</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="inviteButton">
+     <property name="geometry">
+      <rect>
+       <x>34</x>
+       <y>320</y>
+       <width>191</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton{
+	background-color: rgb(52, 94, 186);
+	color: white;
+}</string>
+     </property>
+     <property name="text">
+      <string>邀请</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="chatPage">
+    <widget class="QPushButton" name="quitButton">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>170</y>
+       <width>221</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton{
+	background-color:rgb(175, 0, 0);
+	color:white
+}</string>
+     </property>
+     <property name="text">
+      <string>退出聊天室</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="loadButton">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>110</y>
+       <width>221</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton{
+	background-color:rgb(236, 130, 43);
+	color:white
+}</string>
+     </property>
+     <property name="text">
+      <string>加载历史聊天记录</string>
+     </property>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <resources/>

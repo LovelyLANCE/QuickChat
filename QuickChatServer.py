@@ -45,3 +45,23 @@ class QuickChatServer(service_pb2_grpc.QuickChatServiceServicer):
         message_clock = request.vclock
         self.thread.messageReceiveSignal.emit(sender_ip, message, message_clock)
         return service_pb2.ChatMessageResponse(success=True)
+
+    def SendChatQuit(self, request, context):
+        """
+        接收其他聊天者的退出消息
+        :param request:
+        :param context:
+        :return:
+        """
+        sender_ip = request.sender_ip
+        self.thread.memberQuitSignal.emit(sender_ip)
+        return service_pb2.ChatQuitResponse(confirmed=True)
+
+    def SendChatDetect(self, request, context):
+        """
+        发送探测其他成员在线情况的请求
+        :param request:
+        :param context:
+        :return:
+        """
+        return service_pb2.ChatDetectResponse(confirmed=True)

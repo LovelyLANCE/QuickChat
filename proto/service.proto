@@ -33,6 +33,24 @@ message ChatMessageResponse {
   bool success = 1; // 消息是否成功发送
 }
 
+// 定义成员退出聊天的请求和响应
+message ChatQuitRequest {
+  string sender_ip = 1; // 退出者的IP地址
+}
+
+message ChatQuitResponse {
+  bool confirmed = 1; // 其他成员的确认信息
+}
+
+message ChatDetectRequest {
+  bool detect = 1;  // 无实际意义
+}
+
+message ChatDetectResponse {
+  bool confirmed = 1; // 在线确认信息
+}
+
+
 // 定义聊天服务
 service QuickChatService {
   // 发送聊天邀请
@@ -41,4 +59,8 @@ service QuickChatService {
   rpc SendChatMemberInfo(ChatMemberInfoRequest) returns (ChatMemberInfoResponse);
   // 发送聊天消息
   rpc SendChatMessage(ChatMessageRequest) returns (ChatMessageResponse);
+  // 退出聊天请求
+  rpc SendChatQuit(ChatQuitRequest) returns (ChatQuitResponse);
+  // 探测在线状况请求
+  rpc SendChatDetect(ChatDetectRequest) returns (ChatDetectResponse);
 }
